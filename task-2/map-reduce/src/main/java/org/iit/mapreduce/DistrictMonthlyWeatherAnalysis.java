@@ -93,6 +93,12 @@ public class DistrictMonthlyWeatherAnalysis {
         private HashMap<String, String> locationMap = new HashMap<>();
         private Text outputKey = new Text();
         private Text outputValue = new Text();
+        
+        // Month names for better output
+        private static final String[] MONTH_NAMES = {
+            "", "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        };
 
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
@@ -173,11 +179,15 @@ public class DistrictMonthlyWeatherAnalysis {
                     String month = keyParts[1];
 
                     String districtName = locationMap.getOrDefault(locationId, "Location_" + locationId);
+                    
+                    // Convert month number to name
+                    int monthNum = Integer.parseInt(month);
+                    String monthName = MONTH_NAMES[monthNum];
 
-                    // Format output: District - Month, Total Precipitation: X mm, Mean Temperature: Y°C
-                    String formattedKey = districtName + " - " + month;
-                    String formattedValue = String.format("Total Precipitation: %.2f mm, Mean Temperature: %.2f°C",
-                            totalPrecipitation, meanTemperature);
+                    // Format output as per requirement
+                    String formattedKey = districtName;
+                    String formattedValue = String.format("had a total precipitation of %.2f hours with a mean temperature of %.2f°C for %s",
+                            totalPrecipitation, meanTemperature, monthName);
 
                     outputKey.set(formattedKey);
                     outputValue.set(formattedValue);
@@ -217,10 +227,9 @@ public class DistrictMonthlyWeatherAnalysis {
 }
 
 /*
-**Expected Output Format:**
-Gampaha - 01    Total Precipitation: 1250.50 mm, Mean Temperature: 25.30°C
-Gampaha - 02    Total Precipitation: 890.20 mm, Mean Temperature: 26.10°C
-Gampaha - 03    Total Precipitation: 1050.00 mm, Mean Temperature: 27.50°C
-Colombo - 01    Total Precipitation: 1100.00 mm, Mean Temperature: 27.00°C
-Colombo - 02    Total Precipitation: 950.50 mm, Mean Temperature: 28.20°C
+**Expected Output:**
+```
+Gampaha    had a total precipitation of 1250.50 hours with a mean temperature of 25.30°C for January
+Gampaha    had a total precipitation of 890.20 hours with a mean temperature of 26.10°C for February
+Colombo    had a total precipitation of 1050.00 hours with a mean temperature of 27.50°C for January
 */
