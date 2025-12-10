@@ -239,7 +239,7 @@ public class DistrictMonthlyWeatherAnalysis {
         job.createSymlink();
 
         FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
-        FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
+        FileOutputFormat.setOutputPath(job, new Path(otherArgs[2]));
 
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
