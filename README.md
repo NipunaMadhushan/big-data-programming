@@ -9,7 +9,7 @@ Follow the steps below to deploy the HDFS in docker.
 2. ./gradlew clean build
 3. cd ..
 3. cp map-reduce/build/libs/map-reduce-1.0.0-SNAPSHOT.jar deployment/resources/
-4. sudo docker compose -f docker-compose.yml up -d
+4. sudo docker compose -f deployment/docker-compose.yml up -d
 
 
 1. sudo docker exec -it namenode bash

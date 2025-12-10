@@ -1,23 +1,16 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * or more contributor license agreements.
  */
 
 package org.iit.mapreduce;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.net.URI;
+import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -29,44 +22,56 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.net.URI;
-import java.util.HashMap;
-
 public class DistrictMonthlyWeatherAnalysis {
 
     public static class WeatherMapper extends Mapper<LongWritable, Text, Text, Text> {
 
         private Text outputKey = new Text();
         private Text outputValue = new Text();
-        private boolean isHeader = true;
+        private int lineCount = 0;
 
         @Override
         public void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
 
-            // Skip header line
-            if (isHeader) {
-                isHeader = false;
+            lineCount++;
+            
+            // Skip header line (first line)
+            if (lineCount == 1) {
                 return;
             }
 
-            String line = value.toString();
+            String line = value.toString().trim();
+            
+            // Skip empty lines
+            if (line.isEmpty()) {
+                return;
+            }
+
             String[] fields = line.split(",");
 
             try {
-                // Assuming CSV structure:
-                // date, location_id, precipitation_sum, temperature_2m_mean, ...
+                // Print first record for debugging (only once)
+                if (lineCount == 2) {
+                    System.out.println("DEBUG: First data record has " + fields.length + " fields");
+                    System.out.println("DEBUG: Sample record: " + line.substring(0, Math.min(200, line.length())));
+                }
+
+                // Extract fields - adjust indices based on your CSV structure
+                // Common structure: date, location_id, precipitation_sum, temperature_2m_mean, ...
+                if (fields.length < 4) {
+                    return; // Skip records with insufficient fields
+                }
+
                 String date = fields[0].trim();
                 String locationId = fields[1].trim();
                 String precipitation = fields[2].trim();
                 String temperature = fields[3].trim();
 
                 // Skip if essential fields are missing or empty
-                if (precipitation.isEmpty() || temperature.isEmpty() ||
-                        date.isEmpty() || locationId.isEmpty()) {
+                if (date.isEmpty() || locationId.isEmpty() || 
+                    precipitation.isEmpty() || temperature.isEmpty() ||
+                    precipitation.equals("null") || temperature.equals("null")) {
                     return;
                 }
 
@@ -78,6 +83,11 @@ public class DistrictMonthlyWeatherAnalysis {
                 String year = dateParts[0];
                 String month = dateParts[1];
 
+                // Validate year and month
+                if (year.length() != 4 || month.length() > 2) {
+                    return;
+                }
+
                 // Create composite key: locationId-year-month
                 String compositeKey = locationId + "-" + year + "-" + month;
                 outputKey.set(compositeKey);
@@ -88,8 +98,8 @@ public class DistrictMonthlyWeatherAnalysis {
 
                 context.write(outputKey, outputValue);
 
-            } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
-                // Skip malformed records
+            } catch (Exception e) {
+                // Skip malformed records silently
                 return;
             }
         }
@@ -103,30 +113,50 @@ public class DistrictMonthlyWeatherAnalysis {
 
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
-            // Load location data from distributed cache
-            URI[] cacheFiles = context.getCacheFiles();
+            try {
+                // Load location data from distributed cache
+                // The file will be in the current working directory with the symlink name
+                File file = new File("locationData.csv");
+                
+                if (!file.exists()) {
+                    System.err.println("ERROR: locationData.csv not found in working directory");
+                    return;
+                }
 
-            if (cacheFiles != null && cacheFiles.length > 0) {
-                BufferedReader reader = new BufferedReader(
-                        new FileReader(cacheFiles[0].getPath()));
-
+                BufferedReader reader = new BufferedReader(new FileReader(file));
                 String line;
-                boolean firstLine = true;
-
+                int lineNum = 0;
+                
                 while ((line = reader.readLine()) != null) {
-                    if (firstLine) {
-                        firstLine = false;
-                        continue; // Skip header
+                    lineNum++;
+                    
+                    // Skip header
+                    if (lineNum == 1) {
+                        continue;
+                    }
+
+                    // Skip empty lines
+                    if (line.trim().isEmpty()) {
+                        continue;
                     }
 
                     String[] fields = line.split(",");
                     if (fields.length >= 2) {
                         String locationId = fields[0].trim();
                         String cityName = fields[1].trim();
-                        locationMap.put(locationId, cityName);
+                        
+                        if (!locationId.isEmpty() && !cityName.isEmpty()) {
+                            locationMap.put(locationId, cityName);
+                        }
                     }
                 }
                 reader.close();
+                
+                System.out.println("INFO: Loaded " + locationMap.size() + " locations from cache file");
+                
+            } catch (Exception e) {
+                System.err.println("ERROR loading location data: " + e.getMessage());
+                e.printStackTrace();
             }
         }
 
@@ -142,12 +172,14 @@ public class DistrictMonthlyWeatherAnalysis {
             for (Text value : values) {
                 String[] parts = value.toString().split(",");
                 try {
-                    double precipitation = Double.parseDouble(parts[0]);
-                    double temperature = Double.parseDouble(parts[1]);
+                    if (parts.length >= 2) {
+                        double precipitation = Double.parseDouble(parts[0]);
+                        double temperature = Double.parseDouble(parts[1]);
 
-                    totalPrecipitation += precipitation;
-                    totalTemperature += temperature;
-                    count++;
+                        totalPrecipitation += precipitation;
+                        totalTemperature += temperature;
+                        count++;
+                    }
                 } catch (NumberFormatException e) {
                     // Skip invalid values
                     continue;
@@ -160,22 +192,24 @@ public class DistrictMonthlyWeatherAnalysis {
 
                 // Parse the composite key to extract location, year, and month
                 String[] keyParts = key.toString().split("-");
-                String locationId = keyParts[0];
-                String year = keyParts[1];
-                String month = keyParts[2];
+                if (keyParts.length >= 3) {
+                    String locationId = keyParts[0];
+                    String year = keyParts[1];
+                    String month = keyParts[2];
 
-                // Get district name from location map
-                String districtName = locationMap.getOrDefault(locationId, "Unknown_" + locationId);
+                    // Get district name from location map
+                    String districtName = locationMap.getOrDefault(locationId, "Location_" + locationId);
 
-                // Format output key and value
-                String formattedKey = districtName + " - " + year + "-" + month;
-                String formattedValue = String.format("Total Precipitation: %.2f mm, Mean Temperature: %.2f°C",
-                        totalPrecipitation, meanTemperature);
+                    // Format output key and value
+                    String formattedKey = districtName + " - " + year + "-" + month;
+                    String formattedValue = String.format("Total Precipitation: %.2f mm, Mean Temperature: %.2f°C",
+                            totalPrecipitation, meanTemperature);
 
-                outputKey.set(formattedKey);
-                outputValue.set(formattedValue);
+                    outputKey.set(formattedKey);
+                    outputValue.set(formattedValue);
 
-                context.write(outputKey, outputValue);
+                    context.write(outputKey, outputValue);
+                }
             }
         }
     }
@@ -183,7 +217,7 @@ public class DistrictMonthlyWeatherAnalysis {
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
         String[] otherArgs = new GenericOptionsParser(conf, args).getRemainingArgs();
-
+        
         if (otherArgs.length != 3) {
             System.err.println("Usage: DistrictMonthlyWeatherAnalysis <weather_input> <location_file> <output>");
             System.exit(2);
@@ -191,18 +225,21 @@ public class DistrictMonthlyWeatherAnalysis {
 
         Job job = Job.getInstance(conf, "District Monthly Weather Analysis");
         job.setJarByClass(DistrictMonthlyWeatherAnalysis.class);
-
+        
         job.setMapperClass(WeatherMapper.class);
         job.setReducerClass(WeatherReducer.class);
-
+        
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
 
-        // Add location file to distributed cache
-        job.addCacheFile(new URI(otherArgs[1]));
+        // Add location file to distributed cache with symlink
+        job.addCacheFile(new URI(otherArgs[1] + "#locationData.csv"));
+        
+        // Create symlink for distributed cache
+        job.createSymlink();
 
         FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
-        FileOutputFormat.setOutputPath(job, new Path(otherArgs[2]));
+        FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
 
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
