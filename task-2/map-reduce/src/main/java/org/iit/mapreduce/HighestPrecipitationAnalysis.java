@@ -117,7 +117,7 @@ public class HighestPrecipitationAnalysis {
             }
 
             // Write intermediate results (all month totals)
-            String output = String.format("Total Precipitation: %.2f hours", totalPrecipitation);
+            String output = String.format("Total Precipitation: %.2f mm", totalPrecipitation);
             outputValue.set(output);
             context.write(key, outputValue);
         }
@@ -131,7 +131,7 @@ public class HighestPrecipitationAnalysis {
                 String month = dateParts[1];
 
                 String keyString = "HIGHEST_PRECIPITATION";
-                String valueString = String.format("Month: %s, Year: %s, Total Precipitation: %.2f hours",
+                String valueString = String.format("Month: %s, Year: %s, Total Precipitation: %.2f mm",
                         month, year, maxPrecipitation);
 
                 outputKey.set(keyString);

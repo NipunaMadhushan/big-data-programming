@@ -38,20 +38,28 @@ public class DistrictMonthlyWeatherAnalysis {
 
             String line = value.toString().trim();
             
+            // Skip empty lines
             if (line.isEmpty()) {
                 return;
             }
 
+            // Check if this is the header line
             if (isFirstLine) {
                 isFirstLine = false;
-                return;
+                return; // Skip header
             }
 
             String[] fields = line.split(",");
 
             try {
+                // CSV Structure (0-indexed):
+                // 0: location_id
+                // 1: date (M/D/YYYY)
+                // 5: temperature_2m_mean (°C)
+                // 11: precipitation_sum (mm)
+                
                 if (fields.length < 12) {
-                    return;
+                    return; // Skip records with insufficient fields
                 }
 
                 String locationId = fields[0].trim();
@@ -59,30 +67,35 @@ public class DistrictMonthlyWeatherAnalysis {
                 String temperature = fields[5].trim();
                 String precipitation = fields[11].trim();
 
+                // Skip if essential fields are missing or empty
                 if (dateStr.isEmpty() || locationId.isEmpty() || 
                     temperature.isEmpty() || precipitation.isEmpty() ||
                     temperature.equals("null") || precipitation.equals("null")) {
                     return;
                 }
 
-                // Parse date to get month only (not year-month)
+                // Parse date from M/D/YYYY format
                 SimpleDateFormat inputFormat = new SimpleDateFormat("M/d/yyyy");
                 Date date = inputFormat.parse(dateStr);
                 
+                SimpleDateFormat yearFormat = new SimpleDateFormat("yyyy");
                 SimpleDateFormat monthFormat = new SimpleDateFormat("MM");
+                
+                String year = yearFormat.format(date);
                 String month = monthFormat.format(date);
 
-                // Create composite key: locationId-month (no year!)
-                String compositeKey = locationId + "-" + month;
+                // Create composite key: locationId-year-month
+                String compositeKey = locationId + "-" + year + "-" + month;
                 outputKey.set(compositeKey);
 
-                // Emit: key = "locationId-month", value = "precipitation,temperature"
+                // Emit: key = "locationId-year-month", value = "precipitation,temperature"
                 String compositeValue = precipitation + "," + temperature;
                 outputValue.set(compositeValue);
 
                 context.write(outputKey, outputValue);
 
             } catch (Exception e) {
+                // Skip malformed records
                 return;
             }
         }
@@ -93,12 +106,6 @@ public class DistrictMonthlyWeatherAnalysis {
         private HashMap<String, String> locationMap = new HashMap<>();
         private Text outputKey = new Text();
         private Text outputValue = new Text();
-        
-        // Month names for better output
-        private static final String[] MONTH_NAMES = {
-            "", "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        };
 
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
@@ -118,7 +125,7 @@ public class DistrictMonthlyWeatherAnalysis {
                     lineNum++;
                     
                     if (lineNum == 1) {
-                        continue;
+                        continue; // Skip header
                     }
 
                     if (line.trim().isEmpty()) {
@@ -126,6 +133,7 @@ public class DistrictMonthlyWeatherAnalysis {
                     }
 
                     String[] fields = line.split(",");
+                    // Structure: location_id (0), ..., city_name (7)
                     if (fields.length >= 8) {
                         String locationId = fields[0].trim();
                         String cityName = fields[7].trim();
@@ -153,7 +161,6 @@ public class DistrictMonthlyWeatherAnalysis {
             double totalTemperature = 0.0;
             int count = 0;
 
-            // Aggregate all values for this district-month combination across all years
             for (Text value : values) {
                 String[] parts = value.toString().split(",");
                 try {
@@ -174,20 +181,16 @@ public class DistrictMonthlyWeatherAnalysis {
                 double meanTemperature = totalTemperature / count;
 
                 String[] keyParts = key.toString().split("-");
-                if (keyParts.length >= 2) {
+                if (keyParts.length >= 3) {
                     String locationId = keyParts[0];
-                    String month = keyParts[1];
+                    String year = keyParts[1];
+                    String month = keyParts[2];
 
                     String districtName = locationMap.getOrDefault(locationId, "Location_" + locationId);
-                    
-                    // Convert month number to name
-                    int monthNum = Integer.parseInt(month);
-                    String monthName = MONTH_NAMES[monthNum];
 
-                    // Format output as per requirement
-                    String formattedKey = districtName;
-                    String formattedValue = String.format("had a total precipitation of %.2f hours with a mean temperature of %.2f°C for %s",
-                            totalPrecipitation, meanTemperature, monthName);
+                    String formattedKey = districtName + " - " + year + "-" + month;
+                    String formattedValue = String.format("Total Precipitation: %.2f mm, Mean Temperature: %.2f°C",
+                            totalPrecipitation, meanTemperature);
 
                     outputKey.set(formattedKey);
                     outputValue.set(formattedValue);
@@ -225,11 +228,3 @@ public class DistrictMonthlyWeatherAnalysis {
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
 }
-
-/*
-**Expected Output:**
-```
-Gampaha    had a total precipitation of 1250.50 hours with a mean temperature of 25.30°C for January
-Gampaha    had a total precipitation of 890.20 hours with a mean temperature of 26.10°C for February
-Colombo    had a total precipitation of 1050.00 hours with a mean temperature of 27.50°C for January
-*/
