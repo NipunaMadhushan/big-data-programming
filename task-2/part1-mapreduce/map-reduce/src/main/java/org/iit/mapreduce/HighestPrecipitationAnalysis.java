@@ -51,7 +51,7 @@ public class HighestPrecipitationAnalysis {
                 // CSV Structure:
                 // 0: location_id
                 // 1: date (M/D/YYYY)
-                // 11: precipitation_sum (mm)
+                // 11: precipitation_sum (hours)
                 
                 if (fields.length < 12) {
                     return;
@@ -117,7 +117,7 @@ public class HighestPrecipitationAnalysis {
             }
 
             // Write intermediate results (all month totals)
-            String output = String.format("Total Precipitation: %.2f mm", totalPrecipitation);
+            String output = String.format("Total Precipitation: %.2f hours", totalPrecipitation);
             outputValue.set(output);
             context.write(key, outputValue);
         }
@@ -131,7 +131,7 @@ public class HighestPrecipitationAnalysis {
                 String month = dateParts[1];
 
                 String keyString = "HIGHEST_PRECIPITATION";
-                String valueString = String.format("Month: %s, Year: %s, Total Precipitation: %.2f mm",
+                String valueString = String.format("Month: %s, Year: %s, Total Precipitation: %.2f hours",
                         month, year, maxPrecipitation);
 
                 outputKey.set(keyString);

@@ -56,7 +56,7 @@ public class DistrictMonthlyWeatherAnalysis {
                 // 0: location_id
                 // 1: date (M/D/YYYY)
                 // 5: temperature_2m_mean (°C)
-                // 11: precipitation_sum (mm)
+                // 11: precipitation_sum (hours)
                 
                 if (fields.length < 12) {
                     return; // Skip records with insufficient fields
@@ -189,7 +189,7 @@ public class DistrictMonthlyWeatherAnalysis {
                     String districtName = locationMap.getOrDefault(locationId, "Location_" + locationId);
 
                     String formattedKey = districtName + " - " + year + "-" + month;
-                    String formattedValue = String.format("Total Precipitation: %.2f mm, Mean Temperature: %.2f°C",
+                    String formattedValue = String.format("Total Precipitation: %.2f hours, Mean Temperature: %.2f°C",
                             totalPrecipitation, meanTemperature);
 
                     outputKey.set(formattedKey);
