@@ -115,22 +115,18 @@ public class HighestPrecipitationAnalysis {
                 maxPrecipitation = totalPrecipitation;
                 maxMonth = key.toString();
             }
-
-            // Write intermediate results (all month totals)
-            String output = String.format("Total Precipitation: %.2f hours", totalPrecipitation);
-            outputValue.set(output);
-            context.write(key, outputValue);
         }
 
         @Override
         protected void cleanup(Context context) throws IOException, InterruptedException {
-            // Write the final result with the maximum precipitation
+            // Write only the final result with the maximum precipitation
             if (!maxMonth.isEmpty()) {
                 String[] dateParts = maxMonth.split("-");
                 String year = dateParts[0];
                 String month = dateParts[1];
 
-                String keyString = "HIGHEST_PRECIPITATION";
+                // Format: "Month: XX, Year: YYYY, Total Precipitation: XXX.XX hours"
+                String keyString = "Highest Precipitation";
                 String valueString = String.format("Month: %s, Year: %s, Total Precipitation: %.2f hours",
                         month, year, maxPrecipitation);
 

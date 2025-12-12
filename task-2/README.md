@@ -33,7 +33,7 @@ yarn jar /opt/hadoop/resources/map-reduce-1.0.0-SNAPSHOT.jar org.iit.mapreduce.D
 
 - Highest total precipitation
 ```
-yarn jar /opt/hadoop/resources/map-reduce-1.0.0-SNAPSHOT.jar org.iit.mapreduce.HighestPrecipitationAnalysis /user/task/data/weatherData.csv /user/task/data/locationData.csv /user/task/output/HighestPrecipitationAnalysis
+yarn jar /opt/hadoop/resources/map-reduce-1.0.0-SNAPSHOT.jar org.iit.mapreduce.HighestPrecipitationAnalysis /user/task/data/weatherData.csv /user/task/output/HighestPrecipitationAnalysis
 ```
 
 ### Step 4 - Verify the output and write to the file system
