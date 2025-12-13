@@ -100,71 +100,9 @@ hdfs dfs -ls /user/task/data/
 ```
 
 ### Step 3 - Create Hive tables
-Run the following command in your terminal to access the terminal in the datanode.
+Run the following command in your terminal.
 ```
-sudo docker exec -it hive-server hive
-```
-
-Once in the Hive CLI, create the tables using the following SQL queries.
-
-```sql
--- Create database
-CREATE DATABASE IF NOT EXISTS weather_analysis;
-USE weather_analysis;
-
--- Create external table for location data
-CREATE EXTERNAL TABLE IF NOT EXISTS locations (
-    location_id INT,
-    latitude DOUBLE,
-    longitude DOUBLE,
-    elevation INT,
-    utc_offset_seconds INT,
-    timezone STRING,
-    timezone_abbreviation STRING,
-    city_name STRING
-)
-ROW FORMAT DELIMITED
-FIELDS TERMINATED BY ','
-STORED AS TEXTFILE
-LOCATION '/user/task/data/location/'
-TBLPROPERTIES ("skip.header.line.count"="1");
-
--- Create external table for weather data
-CREATE EXTERNAL TABLE IF NOT EXISTS weather_raw (
-    location_id INT,
-    date_str STRING,
-    weather_code INT,
-    temperature_2m_max DOUBLE,
-    temperature_2m_min DOUBLE,
-    temperature_2m_mean DOUBLE,
-    apparent_temperature_max DOUBLE,
-    apparent_temperature_min DOUBLE,
-    apparent_temperature_mean DOUBLE,
-    daylight_duration DOUBLE,
-    sunshine_duration DOUBLE,
-    precipitation_sum DOUBLE,
-    rain_sum DOUBLE,
-    precipitation_hours DOUBLE,
-    wind_speed_10m_max DOUBLE,
-    wind_gusts_10m_max DOUBLE,
-    wind_direction_10m_dominant INT,
-    shortwave_radiation_sum DOUBLE,
-    et0_fao_evapotranspiration DOUBLE,
-    sunrise STRING,
-    sunset STRING
-)
-ROW FORMAT DELIMITED
-FIELDS TERMINATED BY ','
-STORED AS TEXTFILE
-LOCATION '/user/task/data/weather/'
-TBLPROPERTIES ("skip.header.line.count"="1");
-
--- Verify tables are created
-SHOW TABLES;
-
--- Check sample data
-SELECT * FROM locations ORDER BY location_id LIMIT 5;
-SELECT * FROM weather_raw ORDER BY location_id LIMIT 5;
+sudo docker exec -it hive-server hive -f ./resources/scripts/create-hive-tables.hql
 ```
 
 ### Step 4 - Prepare data files in HDFS
@@ -194,85 +132,32 @@ hdfs dfs -ls /user/task/data/weather/
 ```
 
 ### Step 5 - Solve question 1 (Top 10 most temperate cities)
-Run the following SQL queries in the Hive CLI.
-
-```sql
-USE weather_analysis;
-
--- Calculate average maximum temperature for each city
-SELECT 
-    l.city_name,
-    AVG(w.temperature_2m_mean) as avg_mean_temperature
-FROM 
-    weather_raw w
-JOIN 
-    locations l ON w.location_id = l.location_id
-GROUP BY 
-    l.city_name
-ORDER BY 
-    avg_mean_temperature DESC
-LIMIT 10;
-
--- Create a table to store results
-CREATE TABLE top_10_temperate_cities AS
-SELECT 
-    l.city_name,
-    ROUND(AVG(w.temperature_2m_mean), 2) as avg_mean_temperature
-FROM 
-    weather_raw w
-JOIN 
-    locations l ON w.location_id = l.location_id
-GROUP BY 
-    l.city_name
-ORDER BY 
-    avg_mean_temperature DESC
-LIMIT 10;
-
--- View results
-SELECT * FROM top_10_temperate_cities;
+Run the following command in your terminal.
+```
+sudo docker exec -it hive-server hive -f ./resources/scripts/top-10-most-temperate-cities.hql
 ```
 
 ### Step 6 - Solve question 2 (Average evapotranspiration by season)
-Run the following SQL queries in the Hive CLI.
-
-```sql
-USE weather_analysis;
-
--- First, create a table with parsed dates and seasons
-CREATE TABLE weather_with_season AS
-SELECT 
-    w.*,
-    l.city_name,
-    CAST(regexp_extract(w.date_str, '^(\\d+)/', 1) AS INT) as month,
-    CAST(regexp_extract(w.date_str, '/(\\d+)$', 1) AS INT) as year,
-    CASE 
-        WHEN CAST(regexp_extract(w.date_str, '^(\\d+)/', 1) AS INT) IN (9, 10, 11, 12, 1, 2, 3) 
-        THEN 'September-March'
-        ELSE 'April-August'
-    END as season
-FROM 
-    weather_raw w
-JOIN 
-    locations l ON w.location_id = l.location_id;
-
--- Calculate average evapotranspiration by district and season
-CREATE TABLE avg_evapotranspiration_by_season AS
-SELECT 
-    city_name as district,
-    season,
-    ROUND(AVG(et0_fao_evapotranspiration), 2) as avg_evapotranspiration
-FROM 
-    weather_with_season
-GROUP BY 
-    city_name, season
-ORDER BY 
-    city_name, season;
-
--- View results
-SELECT * FROM avg_evapotranspiration_by_season;
+Run the following command in your terminal.
+```
+sudo docker exec -it hive-server hive -f ./resources/scripts/average-evapotranspiration-by-season.hql
 ```
 
-### Step 7 - Export results to CSV
+### Step 7 - Verify the output tables
+Run the following command in the namenode terminal.
+
+1. Check whether the tables have been created
+```
+hdfs dfs -ls /user/task/output/hive/
+```
+
+2. Check the table data
+```
+hdfs dfs -cat /user/task/output/hive/top_10_temperate_cities/000000_0
+hdfs dfs -cat /user/task/output/hive/avg_evapotranspiration_by_season/000000_0
+```
+
+### Step 8 - Export results to CSV
 In the Hive server container, run the following commands.
 
 1. Export Question 1 results

@@ -16,6 +16,8 @@ LIMIT 10;
 
 -- Create a table to store results
 CREATE TABLE top_10_temperate_cities
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
 LOCATION '/user/task/output/hive/top_10_temperate_cities'
 AS

@@ -19,6 +19,8 @@ JOIN
 
 -- Calculate average evapotranspiration by district and season
 CREATE TABLE avg_evapotranspiration_by_season
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
 STORED AS TEXTFILE
 LOCATION '/user/task/output/hive/avg_evapotranspiration_by_season'
 AS
