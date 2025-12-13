@@ -11,7 +11,7 @@ JOIN
 GROUP BY 
     l.city_name
 ORDER BY 
-    avg_mean_temperature ASC
+    avg_mean_temperature DESC
 LIMIT 10;
 
 -- Create a table to store results
