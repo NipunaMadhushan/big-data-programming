@@ -11,7 +11,7 @@ services:
       - "9000:9000" # FS Default
     volumes:
       - hadoop_namenode:/hadoop/dfs/name
-      - /home/iitgcpuser/iit/lab3_4_map_reduce/mapreduce-design-patterns/src/main/resources:/opt/hadoop/resources
+      - ./resources:/opt/hadoop/resources
     environment:
       - CLUSTER_NAME=test
     env_file:
@@ -76,8 +76,8 @@ services:
       SERVICE_PRECONDITION: "resourcemanager:8088"
     env_file:
       - ./hadoop.env
-    ports:
-      - "8042:8042"  # Add this
+    # ports:
+    #   - "8042:8042"  # Add this
     networks:
       - hadoop
 
@@ -91,8 +91,8 @@ services:
       SERVICE_PRECONDITION: "resourcemanager:8088"
     env_file:
       - ./hadoop.env
-    ports:
-      - "8042:8042"  # Add this
+    # ports:
+    #   - "8042:8042"  # Add this
     networks:
       - hadoop
 
@@ -103,4 +103,3 @@ volumes:
 
 networks:
   hadoop:
-  

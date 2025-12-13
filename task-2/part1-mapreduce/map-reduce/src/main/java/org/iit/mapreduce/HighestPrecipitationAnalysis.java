@@ -1,24 +1,13 @@
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * or more contributor license agreements.
  */
 
 package org.iit.mapreduce;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
@@ -37,39 +26,54 @@ public class HighestPrecipitationAnalysis {
 
         private Text outputKey = new Text();
         private DoubleWritable outputValue = new DoubleWritable();
-        private boolean isHeader = true;
+        private boolean isFirstLine = true;
 
         @Override
         public void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
 
-            // Skip header line
-            if (isHeader) {
-                isHeader = false;
+            String line = value.toString().trim();
+            
+            // Skip empty lines
+            if (line.isEmpty()) {
                 return;
             }
 
-            String line = value.toString();
+            // Check if this is the header line
+            if (isFirstLine) {
+                isFirstLine = false;
+                return; // Skip header
+            }
+
             String[] fields = line.split(",");
 
             try {
-                // Assuming CSV structure:
-                // date, location_id, precipitation_sum, ...
-                String date = fields[0].trim();
-                String precipitation = fields[2].trim();
-
-                // Skip if precipitation is missing or empty
-                if (precipitation.isEmpty() || date.isEmpty()) {
+                // CSV Structure:
+                // 0: location_id
+                // 1: date (M/D/YYYY)
+                // 11: precipitation_sum (hours)
+                
+                if (fields.length < 12) {
                     return;
                 }
 
-                // Extract year and month from date (Format: YYYY-MM-DD)
-                String[] dateParts = date.split("-");
-                if (dateParts.length < 2) {
+                String dateStr = fields[1].trim();
+                String precipitation = fields[13].trim();
+
+                // Skip if fields are missing or empty
+                if (dateStr.isEmpty() || precipitation.isEmpty() || precipitation.equals("null")) {
                     return;
                 }
-                String year = dateParts[0];
-                String month = dateParts[1];
+
+                // Parse date from M/D/YYYY format
+                SimpleDateFormat inputFormat = new SimpleDateFormat("M/d/yyyy");
+                Date date = inputFormat.parse(dateStr);
+                
+                SimpleDateFormat yearFormat = new SimpleDateFormat("yyyy");
+                SimpleDateFormat monthFormat = new SimpleDateFormat("MM");
+                
+                String year = yearFormat.format(date);
+                String month = monthFormat.format(date);
 
                 // Create composite key: year-month
                 String compositeKey = year + "-" + month;
@@ -81,7 +85,7 @@ public class HighestPrecipitationAnalysis {
 
                 context.write(outputKey, outputValue);
 
-            } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+            } catch (Exception e) {
                 // Skip malformed records
                 return;
             }
@@ -111,23 +115,19 @@ public class HighestPrecipitationAnalysis {
                 maxPrecipitation = totalPrecipitation;
                 maxMonth = key.toString();
             }
-
-            // Write intermediate results (all month totals)
-            String output = String.format("Total Precipitation: %.2f mm", totalPrecipitation);
-            outputValue.set(output);
-            context.write(key, outputValue);
         }
 
         @Override
         protected void cleanup(Context context) throws IOException, InterruptedException {
-            // Write the final result with the maximum precipitation
+            // Write only the final result with the maximum precipitation
             if (!maxMonth.isEmpty()) {
                 String[] dateParts = maxMonth.split("-");
                 String year = dateParts[0];
                 String month = dateParts[1];
 
-                String keyString = "HIGHEST_PRECIPITATION";
-                String valueString = String.format("Month: %s, Year: %s, Total Precipitation: %.2f mm",
+                // Format: "Month: XX, Year: YYYY, Total Precipitation: XXX.XX hours"
+                String keyString = "Highest Precipitation";
+                String valueString = String.format("Month: %s, Year: %s, Total Precipitation: %.2f hours",
                         month, year, maxPrecipitation);
 
                 outputKey.set(keyString);
