@@ -63,12 +63,13 @@ Run the following command to write the output data into a csv file (Optional).
 ```
 
 ## Part 2 - Apache Hive
+Follow the steps below to setup HDFS and Apache Hive.
 
 ### Step 1 - Deploy HDFS and Apache Hive
 Run the following commands in your terminal.
 
 1. cd task-2/part2-apachehive
-5. sudo docker compose -f deployment/docker-compose.yml up -d
+2. sudo docker compose -f deployment/docker-compose.yml up -d
 
 Wait for services to be healthy (especially check namenode and hive-metastore-postgresql)
 ```
@@ -131,19 +132,18 @@ hdfs dfs -ls /user/task/data/location/
 hdfs dfs -ls /user/task/data/weather/
 ```
 
-### Step 5 - Solve question 1 (Top 10 most temperate cities)
-Run the following command in your terminal.
+### Step 5 - Analyze data
+Run the following command in your terminal to get `top 10 most temperate cities`.
 ```
 sudo docker exec -it hive-server hive -f ./resources/scripts/top-10-most-temperate-cities.hql
 ```
 
-### Step 6 - Solve question 2 (Average evapotranspiration by season)
-Run the following command in your terminal.
+Run the following command in your terminal to get `average evapotranspiration by season`.
 ```
 sudo docker exec -it hive-server hive -f ./resources/scripts/average-evapotranspiration-by-season.hql
 ```
 
-### Step 7 - Verify the output tables
+### Step 6 - Verify the output tables
 Run the following command in the namenode terminal.
 
 1. Check whether the tables have been created
@@ -157,7 +157,7 @@ hdfs dfs -cat /user/task/output/hive/top_10_temperate_cities/000000_0
 hdfs dfs -cat /user/task/output/hive/avg_evapotranspiration_by_season/000000_0
 ```
 
-### Step 8 - Export results to CSV
+### Step 7 - Export results to CSV
 In the Hive server container, run the following commands.
 
 1. Export Question 1 results
@@ -177,5 +177,67 @@ docker cp hive-server:/tmp/avg_evapotranspiration_by_season.csv ./
 ```
 
 ## Part 3 - Apache Spark
-To be completed
+Follow the steps below to setup HDFS and Apache Spark.
 
+### Step 1 - Deploy HDFS and Apache Spark
+Run the following commands in your terminal.
+
+1. cd task-2/part3-apachespark
+2. sudo docker compose -f deployment/docker-compose.yml up -d
+
+
+### Step 2 - Upload data to HDFS
+Run the following command in your terminal to access the terminal in the hadoop namenode.
+```
+sudo docker exec -it namenode bash
+```
+
+Then execute the following commands.
+1. Create Directories in HDFS
+```
+hdfs dfs -mkdir -p /user/task/data
+```
+
+2. Upload the CSV files (if not already uploaded)
+```
+hdfs dfs -put /opt/resources/data/weatherData.csv /user/task/data/
+hdfs dfs -put /opt/resources/data/locationData.csv /user/task/data/
+```
+
+3. Verify files are uploaded
+```
+hdfs dfs -ls /user/task/data/
+```
+
+### Step 3 - Analyze data
+Run the following command in your terminal to get the `percentage of total shortwave radiation`.
+```
+docker exec -it spark-master spark-submit \
+  --master spark://spark-master:7077 \
+  --deploy-mode client \
+  /opt/resources/q1_shortwave_radiation.py
+```
+
+Run the following command in your terminal to get the `weekly maximum temperatures for the hottest months of an year`.
+```
+docker exec -it spark-master spark-submit \
+  --master spark://spark-master:7077 \
+  --deploy-mode client \
+  /opt/resources/q2_weekly_max_temp.py
+```
+
+### Step 4 - View results
+Run the following commands in the namenode terminal.
+
+```
+docker exec namenode hdfs dfs -cat /user/task/output/spark/q1_shortwave_radiation/*.csv | head -20
+docker exec namenode hdfs dfs -cat /user/task/output/spark/q2_weekly_max_temp/*.csv | head -20
+```
+
+### Step 5 - Get results to the file system
+Run the following commands in your terminal.
+
+```
+docker exec namenode hdfs dfs -getmerge /user/task/output/spark/q1_shortwave_radiation ./q1_shortwave_radiation.csv
+docker exec namenode hdfs dfs -getmerge /user/task/output/spark/q2_weekly_max_temp ./q2_weekly_max_temp.csv
+```
