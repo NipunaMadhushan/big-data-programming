@@ -1,5 +1,7 @@
 USE weather_analysis;
 
+DROP TABLE IF EXISTS avg_evapotranspiration_by_season;
+
 -- First, create a table with parsed dates and seasons
 CREATE TABLE weather_with_season AS
 SELECT 

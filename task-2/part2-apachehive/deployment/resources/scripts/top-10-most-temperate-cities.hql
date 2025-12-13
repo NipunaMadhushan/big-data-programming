@@ -1,5 +1,7 @@
 USE weather_analysis;
 
+DROP TABLE IF EXISTS top_10_temperate_cities;
+
 -- Calculate average maximum temperature for each city
 SELECT 
     l.city_name,
