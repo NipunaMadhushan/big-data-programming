@@ -65,7 +65,7 @@ public class DistrictMonthlyWeatherAnalysis {
                 String locationId = fields[0].trim();
                 String dateStr = fields[1].trim();
                 String temperature = fields[5].trim();
-                String precipitation = fields[11].trim();
+                String precipitation = fields[13].trim();
 
                 // Skip if essential fields are missing or empty
                 if (dateStr.isEmpty() || locationId.isEmpty() || 

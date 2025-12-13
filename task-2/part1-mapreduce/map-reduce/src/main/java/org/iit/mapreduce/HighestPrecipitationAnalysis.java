@@ -58,7 +58,7 @@ public class HighestPrecipitationAnalysis {
                 }
 
                 String dateStr = fields[1].trim();
-                String precipitation = fields[11].trim();
+                String precipitation = fields[13].trim();
 
                 // Skip if fields are missing or empty
                 if (dateStr.isEmpty() || precipitation.isEmpty() || precipitation.equals("null")) {
