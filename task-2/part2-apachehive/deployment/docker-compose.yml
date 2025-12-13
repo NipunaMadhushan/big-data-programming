@@ -118,7 +118,7 @@ services:
     container_name: hive-server
     platform: linux/amd64
     volumes:
-      - ./resources/scripts:/opt/scripts
+      - ./resources/scripts:/opt/resources/scripts
     env_file:
       - ./hadoop.env
     environment: # Added for HDFS client stability
