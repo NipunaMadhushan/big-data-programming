@@ -212,18 +212,18 @@ hdfs dfs -ls /user/task/data/
 ### Step 3 - Analyze data
 Run the following command in your terminal to get the `percentage of total shortwave radiation`.
 ```
-docker exec -it spark-master spark-submit \
+sudo docker exec -it spark-master /spark/bin/spark-submit \
   --master spark://spark-master:7077 \
   --deploy-mode client \
-  /opt/resources/q1_shortwave_radiation.py
+  /opt/resources/scripts/q1_shortwave_radiation.py
 ```
 
 Run the following command in your terminal to get the `weekly maximum temperatures for the hottest months of an year`.
 ```
-docker exec -it spark-master spark-submit \
+sudo docker exec -it spark-master /spark/bin/spark-submit \
   --master spark://spark-master:7077 \
   --deploy-mode client \
-  /opt/resources/q2_weekly_max_temp.py
+  /opt/resources/scripts/q2_weekly_max_temp.py
 ```
 
 ### Step 4 - View results

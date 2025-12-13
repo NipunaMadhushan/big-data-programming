@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, count, sum, round, when, month, year, concat_ws
+from pyspark.sql.functions import col, count, sum, round, when, concat_ws, regexp_extract
 
 # Initialize Spark Session
 spark = SparkSession.builder \
@@ -23,8 +23,6 @@ location_df = spark.read.csv(
 
 # Extract month and year from date string
 # Date format is M/D/YYYY
-from pyspark.sql.functions import split, regexp_extract
-
 weather_df = weather_df.withColumn(
     "month", 
     regexp_extract(col("date"), r"^(\d+)/", 1).cast("int")
@@ -46,10 +44,10 @@ weather_with_location = weather_with_location.withColumn(
     concat_ws("-", col("year"), col("month"))
 )
 
-# Calculate percentage of shortwave radiation > 15 MJ/m²
+# Calculate percentage of shortwave radiation > 15 MJ/m2
 radiation_analysis = weather_with_location.groupBy("year_month").agg(
     count("*").alias("total_records"),
-    sum(when(col("`shortwave_radiation_sum (MJ/m²)`") > 15, 1).otherwise(0)).alias("high_radiation_count")
+    sum(when(col("shortwave_radiation_sum (MJ/m2)") > 15, 1).otherwise(0)).alias("high_radiation_count")
 ).withColumn(
     "percentage",
     round((col("high_radiation_count") / col("total_records")) * 100, 2)
@@ -61,7 +59,7 @@ radiation_analysis = weather_with_location.groupBy("year_month").agg(
 ).orderBy("year_month")
 
 # Show results
-print("\n=== Percentage of Shortwave Radiation > 15 MJ/m² per Month ===")
+print("\n=== Percentage of Shortwave Radiation > 15 MJ/m2 per Month ===")
 radiation_analysis.show(50, truncate=False)
 
 # Save results to HDFS
