@@ -18,7 +18,10 @@ JOIN
     locations l ON w.location_id = l.location_id;
 
 -- Calculate average evapotranspiration by district and season
-CREATE TABLE avg_evapotranspiration_by_season AS
+CREATE TABLE avg_evapotranspiration_by_season
+STORED AS TEXTFILE
+LOCATION '/user/task/output/hive/avg_evapotranspiration_by_season'
+AS
 SELECT 
     city_name as district,
     season,

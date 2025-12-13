@@ -15,7 +15,10 @@ ORDER BY
 LIMIT 10;
 
 -- Create a table to store results
-CREATE TABLE top_10_temperate_cities AS
+CREATE TABLE top_10_temperate_cities
+STORED AS TEXTFILE
+LOCATION '/user/task/output/hive/top_10_temperate_cities'
+AS
 SELECT 
     l.city_name,
     ROUND(AVG(w.temperature_2m_max), 2) as avg_max_temperature
