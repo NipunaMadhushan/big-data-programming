@@ -1,0 +1,29 @@
+plugins {
+    id 'java'
+}
+
+group = 'org.iit.mapreduce'
+version = project.version
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    implementation "org.apache.hadoop:hadoop-client:${project.hadoopClientVersion}"
+    implementation "org.apache.hadoop:hadoop-mapreduce-client-core:${project.hadoopCommonVersion}"
+    implementation "org.apache.hadoop:hadoop-mapreduce-client-app:${project.hadoopCommonVersion}"
+    implementation "org.apache.hadoop:hadoop-common:${project.hadoopCommonVersion}"
+    implementation "org.apache.hadoop:hadoop-yarn-client:${project.hadoopCommonVersion}"
+}
+
+test {
+    useJUnitPlatform()
+}
