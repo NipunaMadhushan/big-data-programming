@@ -1,11 +1,9 @@
--- Back in Hive CLI
 USE weather_analysis;
 
 -- Calculate average maximum temperature for each city
--- Lower temperature_2m_max means more temperate
 SELECT 
     l.city_name,
-    AVG(w.temperature_2m_max) as avg_max_temperature
+    AVG(w.temperature_2m_mean) as avg_mean_temperature
 FROM 
     weather_raw w
 JOIN 
@@ -13,14 +11,14 @@ JOIN
 GROUP BY 
     l.city_name
 ORDER BY 
-    avg_max_temperature ASC
+    avg_mean_temperature ASC
 LIMIT 10;
 
 -- Create a table to store results
 CREATE TABLE top_10_temperate_cities AS
 SELECT 
     l.city_name,
-    ROUND(AVG(w.temperature_2m_max), 2) as avg_max_temperature
+    ROUND(AVG(w.temperature_2m_mean), 2) as avg_mean_temperature
 FROM 
     weather_raw w
 JOIN 
@@ -28,7 +26,7 @@ JOIN
 GROUP BY 
     l.city_name
 ORDER BY 
-    avg_max_temperature ASC
+    avg_mean_temperature DESC
 LIMIT 10;
 
 -- View results

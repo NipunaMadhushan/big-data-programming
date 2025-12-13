@@ -53,5 +53,5 @@ TBLPROPERTIES ("skip.header.line.count"="1");
 SHOW TABLES;
 
 -- Check sample data
-SELECT * FROM locations LIMIT 5;
-SELECT * FROM weather_raw LIMIT 5;
+SELECT * FROM locations ORDER BY location_id LIMIT 5;
+SELECT * FROM weather_raw ORDER BY location_id LIMIT 5;

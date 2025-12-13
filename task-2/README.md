@@ -72,7 +72,7 @@ Run the following commands in your terminal.
 
 Wait for services to be healthy (especially check namenode and hive-metastore-postgresql)
 ```
-docker-compose logs -f hive-metastore-init
+sudo docker logs -f hive-metastore-init
 ```
 
 ### Step 2 - Upload data to HDFS
@@ -90,8 +90,8 @@ hdfs dfs -mkdir -p /user/task/data
 
 2. Upload the CSV files (if not already uploaded)
 ```
-hdfs dfs -put /path/to/weatherData.csv /user/task/data/
-hdfs dfs -put /path/to/locationData.csv /user/task/data/
+hdfs dfs -put /opt/resources/data/weatherData.csv /user/task/data/
+hdfs dfs -put /opt/resources/data/locationData.csv /user/task/data/
 ```
 
 3. Verify files are uploaded
@@ -163,8 +163,8 @@ TBLPROPERTIES ("skip.header.line.count"="1");
 SHOW TABLES;
 
 -- Check sample data
-SELECT * FROM locations LIMIT 5;
-SELECT * FROM weather_raw LIMIT 5;
+SELECT * FROM locations ORDER BY location_id LIMIT 5;
+SELECT * FROM weather_raw ORDER BY location_id LIMIT 5;
 ```
 
 ### Step 4 - Prepare data files in HDFS
@@ -197,14 +197,12 @@ hdfs dfs -ls /user/task/data/weather/
 Run the following SQL queries in the Hive CLI.
 
 ```sql
--- Back in Hive CLI
 USE weather_analysis;
 
 -- Calculate average maximum temperature for each city
--- Lower temperature_2m_max means more temperate
 SELECT 
     l.city_name,
-    AVG(w.temperature_2m_max) as avg_max_temperature
+    AVG(w.temperature_2m_mean) as avg_mean_temperature
 FROM 
     weather_raw w
 JOIN 
@@ -212,14 +210,14 @@ JOIN
 GROUP BY 
     l.city_name
 ORDER BY 
-    avg_max_temperature ASC
+    avg_mean_temperature ASC
 LIMIT 10;
 
 -- Create a table to store results
 CREATE TABLE top_10_temperate_cities AS
 SELECT 
     l.city_name,
-    ROUND(AVG(w.temperature_2m_max), 2) as avg_max_temperature
+    ROUND(AVG(w.temperature_2m_mean), 2) as avg_mean_temperature
 FROM 
     weather_raw w
 JOIN 
@@ -227,7 +225,7 @@ JOIN
 GROUP BY 
     l.city_name
 ORDER BY 
-    avg_max_temperature ASC
+    avg_mean_temperature DESC
 LIMIT 10;
 
 -- View results
