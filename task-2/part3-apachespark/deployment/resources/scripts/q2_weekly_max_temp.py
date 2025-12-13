@@ -1,101 +1,58 @@
 # -*- coding: utf-8 -*-
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, max, avg, year, month, weekofyear, round, concat_ws, regexp_extract
+from pyspark.sql.functions import col, max, avg, dayofyear, floor, regexp_extract, row_number, to_date
 from pyspark.sql.window import Window
 
-# Initialize Spark Session
-spark = SparkSession.builder \
-    .appName("Weekly Maximum Temperature Analysis") \
-    .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
-    .getOrCreate()
+spark = SparkSession.builder.appName("Weekly Max Temp Analysis").config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000").getOrCreate()
+weather_df = spark.read.csv("hdfs://namenode:9000/user/task/data/weatherData.csv", header=True, inferSchema=True)
 
-# Read weather data
-weather_df = spark.read.csv(
-    "hdfs://namenode:9000/user/task/data/weatherData.csv",
-    header=True,
-    inferSchema=True
+# Rename problematic columns
+for c in weather_df.columns:
+    if 'temperature_2m_max' in c:
+        weather_df = weather_df.withColumnRenamed(c, "temperature_2m_max")
+
+# Extract month, year from date string (format: M/D/YYYY)
+weather_df = weather_df.withColumn("month", regexp_extract(col("date"), r"^(\d+)/", 1).cast("int"))
+weather_df = weather_df.withColumn("year", regexp_extract(col("date"), r"/(\d+)$", 1).cast("int"))
+weather_df = weather_df.withColumn("day", regexp_extract(col("date"), r"^(\d+)/(\d+)/", 2).cast("int"))
+
+# Calculate week number within each month (1-5 weeks per month)
+# Week 1: days 1-7, Week 2: days 8-14, Week 3: days 15-21, Week 4: days 22-28, Week 5: days 29-31
+weather_df = weather_df.withColumn("week_of_month", floor((col("day") - 1) / 7).cast("int") + 1)
+
+print("\n=== Step 1: Finding Hottest Month for Each Year ===")
+# Step 1: Find the hottest month for each year (month with highest average max temperature)
+hottest_months = weather_df.groupBy("year", "month").agg(
+    avg("temperature_2m_max").alias("avg_max_temp")
 )
 
-# Read location data
-location_df = spark.read.csv(
-    "hdfs://namenode:9000/user/task/data/locationData.csv",
-    header=True,
-    inferSchema=True
-)
-
-# Extract month, year, and week from date string
-weather_df = weather_df.withColumn(
-    "month", 
-    regexp_extract(col("date"), r"^(\d+)/", 1).cast("int")
-).withColumn(
-    "year",
-    regexp_extract(col("date"), r"/(\d+)$", 1).cast("int")
-).withColumn(
-    "day",
-    regexp_extract(col("date"), r"^(\d+)/(\d+)/", 2).cast("int")
-)
-
-# Calculate week number within the year (approximate)
-# Week number = (day of year) / 7
-from pyspark.sql.functions import dayofyear, floor
-
-weather_df = weather_df.withColumn(
-    "week_of_year",
-    floor(dayofyear(col("date")) / 7).cast("int")
-)
-
-# Join with location data
-weather_with_location = weather_df.join(
-    location_df.select("location_id", "city_name"),
-    on="location_id",
-    how="inner"
-)
-
-# Step 1: Find the hottest months for each year
-# (Month with highest average temperature_2m_max)
-hottest_months = weather_with_location.groupBy("year", "month").agg(
-    avg("`temperature_2m_max (°C)`").alias("avg_max_temp")
-)
-
-# Rank months within each year
-from pyspark.sql.window import Window
-from pyspark.sql.functions import row_number
-
+# Rank months within each year by average temperature (descending)
 window_spec = Window.partitionBy("year").orderBy(col("avg_max_temp").desc())
+hottest_months = hottest_months.withColumn("rank", row_number().over(window_spec))
 
-hottest_months = hottest_months.withColumn(
-    "rank",
-    row_number().over(window_spec)
-).filter(col("rank") == 1).select("year", "month")
-
-print("\n=== Hottest Months by Year ===")
+# Keep only the hottest month (rank = 1) for each year
+hottest_months = hottest_months.filter(col("rank") == 1).select("year", "month", "avg_max_temp")
 hottest_months.show(20)
 
-# Step 2: Get weekly maximum temperatures for these hottest months
-weekly_max_temps = weather_with_location.join(
-    hottest_months,
+print("\n=== Step 2: Weekly Maximum Temperatures for Hottest Months ===")
+# Step 2: Join back to get only data from hottest months, then calculate weekly max temps
+weekly_max_temps = weather_df.join(
+    hottest_months.select("year", "month"),
     on=["year", "month"],
     how="inner"
-).groupBy("year", "month", "week_of_year").agg(
-    max("`temperature_2m_max (°C)`").alias("weekly_max_temperature")
-).withColumn(
-    "year_month",
-    concat_ws("-", col("year"), col("month"))
+).groupBy("year", "month", "week_of_month").agg(
+    max("temperature_2m_max").alias("weekly_max_temperature")
 ).select(
     "year",
     "month",
-    "week_of_year",
+    "week_of_month",
     "weekly_max_temperature"
-).orderBy("year", "month", "week_of_year")
+).orderBy("year", "month", "week_of_month")
 
-print("\n=== Weekly Maximum Temperatures for Hottest Months ===")
 weekly_max_temps.show(100, truncate=False)
 
-# Save results to HDFS
-weekly_max_temps.coalesce(1).write.mode("overwrite").option("header", "true").csv(
-    "hdfs://namenode:9000/user/task/output/spark/q2_weekly_max_temp"
-)
-
+# Save results
+weekly_max_temps.coalesce(1).write.mode("overwrite").option("header", "true").csv("hdfs://namenode:9000/user/task/output/spark/q2_weekly_max_temp")
 print("\nResults saved to: hdfs://namenode:9000/user/task/output/spark/q2_weekly_max_temp")
 
 # Stop Spark session

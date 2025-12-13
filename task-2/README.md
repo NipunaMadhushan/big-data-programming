@@ -230,8 +230,8 @@ sudo docker exec -it spark-master /spark/bin/spark-submit \
 Run the following commands in the namenode terminal.
 
 ```
-docker exec namenode hdfs dfs -cat /user/task/output/spark/q1_shortwave_radiation/*.csv | head -20
-docker exec namenode hdfs dfs -cat /user/task/output/spark/q2_weekly_max_temp/*.csv | head -20
+hdfs dfs -cat /user/task/output/spark/q1_shortwave_radiation/*.csv | head -20
+hdfs dfs -cat /user/task/output/spark/q2_weekly_max_temp/*.csv | head -20
 ```
 
 ### Step 5 - Get results to the file system

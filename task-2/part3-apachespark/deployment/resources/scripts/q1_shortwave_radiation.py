@@ -1,72 +1,36 @@
 # -*- coding: utf-8 -*-
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, count, sum, round, when, concat_ws, regexp_extract
+from pyspark.sql.functions import col, count, sum, round, when, regexp_extract
 
-# Initialize Spark Session
-spark = SparkSession.builder \
-    .appName("Shortwave Radiation Analysis") \
-    .config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000") \
-    .getOrCreate()
+spark = SparkSession.builder.appName("Shortwave Radiation Analysis").config("spark.hadoop.fs.defaultFS", "hdfs://namenode:9000").getOrCreate()
+weather_df = spark.read.csv("hdfs://namenode:9000/user/task/data/weatherData.csv", header=True, inferSchema=True)
 
-# Read weather data
-weather_df = spark.read.csv(
-    "hdfs://namenode:9000/user/task/data/weatherData.csv",
-    header=True,
-    inferSchema=True
-)
+# Rename problematic column
+for c in weather_df.columns:
+    if 'shortwave' in c:
+        weather_df = weather_df.withColumnRenamed(c, "shortwave_radiation_sum")
 
-# Read location data
-location_df = spark.read.csv(
-    "hdfs://namenode:9000/user/task/data/locationData.csv",
-    header=True,
-    inferSchema=True
-)
+# Extract month and year from date
+weather_df = weather_df.withColumn("month", regexp_extract(col("date"), r"^(\d+)/", 1).cast("int"))
+weather_df = weather_df.withColumn("year", regexp_extract(col("date"), r"/(\d+)$", 1).cast("int"))
 
-# Extract month and year from date string
-weather_df = weather_df.withColumn(
-    "month", 
-    regexp_extract(col("date"), r"^(\d+)/", 1).cast("int")
-).withColumn(
-    "year",
-    regexp_extract(col("date"), r"/(\d+)$", 1).cast("int")
-)
-
-# Join with location data to get city names
-weather_with_location = weather_df.join(
-    location_df.select("location_id", "city_name"),
-    on="location_id",
-    how="inner"
-)
-
-# Create year-month column
-weather_with_location = weather_with_location.withColumn(
-    "year_month",
-    concat_ws("-", col("year"), col("month"))
-)
-
-# Use backticks and the correct column name with superscript
-radiation_analysis = weather_with_location.groupBy("year_month").agg(
+# Calculate percentage of shortwave radiation > 15 MJ/m2 per month across ALL districts
+radiation_analysis = weather_df.groupBy("year", "month").agg(
     count("*").alias("total_records"),
-    sum(when(col("`shortwave_radiation_sum (MJ/m²)`") > 15, 1).otherwise(0)).alias("high_radiation_count")
+    sum(when(col("shortwave_radiation_sum") > 15, 1).otherwise(0)).alias("high_radiation_count")
 ).withColumn(
     "percentage",
     round((col("high_radiation_count") / col("total_records")) * 100, 2)
 ).select(
-    "year_month",
-    "total_records",
-    "high_radiation_count",
+    "year",
+    "month",
     "percentage"
-).orderBy("year_month")
+).orderBy("year", "month")
 
-# Show results
 print("\n=== Percentage of Shortwave Radiation > 15 MJ/m2 per Month ===")
 radiation_analysis.show(200, truncate=False)
 
-# Save results to HDFS
-radiation_analysis.coalesce(1).write.mode("overwrite").option("header", "true").csv(
-    "hdfs://namenode:9000/user/task/output/spark/q1_shortwave_radiation"
-)
-
+radiation_analysis.coalesce(1).write.mode("overwrite").option("header", "true").csv("hdfs://namenode:9000/user/task/output/spark/q1_shortwave_radiation")
 print("\nResults saved to: hdfs://namenode:9000/user/task/output/spark/q1_shortwave_radiation")
 
 # Stop Spark session
