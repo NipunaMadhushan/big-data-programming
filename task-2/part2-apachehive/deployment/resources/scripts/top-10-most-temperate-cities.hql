@@ -11,7 +11,7 @@ JOIN
 GROUP BY 
     l.city_name
 ORDER BY 
-    avg_max_temperature DESC
+    avg_max_temperature ASC
 LIMIT 10;
 
 -- Create a table to store results
@@ -26,7 +26,7 @@ JOIN
 GROUP BY 
     l.city_name
 ORDER BY 
-    avg_max_temperature DESC
+    avg_max_temperature ASC
 LIMIT 10;
 
 -- View results
