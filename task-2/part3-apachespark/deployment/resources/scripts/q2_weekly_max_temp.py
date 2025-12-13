@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, max, avg, dayofyear, floor, concat_ws, regexp_extract, row_number
+from pyspark.sql.functions import col, max, avg, year, month, weekofyear, round, concat_ws, regexp_extract
 from pyspark.sql.window import Window
 
 # Initialize Spark Session
@@ -22,7 +23,7 @@ location_df = spark.read.csv(
     inferSchema=True
 )
 
-# Extract month, year, and day from date string
+# Extract month, year, and week from date string
 weather_df = weather_df.withColumn(
     "month", 
     regexp_extract(col("date"), r"^(\d+)/", 1).cast("int")
@@ -34,7 +35,10 @@ weather_df = weather_df.withColumn(
     regexp_extract(col("date"), r"^(\d+)/(\d+)/", 2).cast("int")
 )
 
-# Calculate week number within the year
+# Calculate week number within the year (approximate)
+# Week number = (day of year) / 7
+from pyspark.sql.functions import dayofyear, floor
+
 weather_df = weather_df.withColumn(
     "week_of_year",
     floor(dayofyear(col("date")) / 7).cast("int")
@@ -48,11 +52,15 @@ weather_with_location = weather_df.join(
 )
 
 # Step 1: Find the hottest months for each year
+# (Month with highest average temperature_2m_max)
 hottest_months = weather_with_location.groupBy("year", "month").agg(
-    avg("temperature_2m_max (degrees C)").alias("avg_max_temp")
+    avg("`temperature_2m_max (°C)`").alias("avg_max_temp")
 )
 
 # Rank months within each year
+from pyspark.sql.window import Window
+from pyspark.sql.functions import row_number
+
 window_spec = Window.partitionBy("year").orderBy(col("avg_max_temp").desc())
 
 hottest_months = hottest_months.withColumn(
@@ -69,7 +77,7 @@ weekly_max_temps = weather_with_location.join(
     on=["year", "month"],
     how="inner"
 ).groupBy("year", "month", "week_of_year").agg(
-    max("temperature_2m_max (degrees C)").alias("weekly_max_temperature")
+    max("`temperature_2m_max (°C)`").alias("weekly_max_temperature")
 ).withColumn(
     "year_month",
     concat_ws("-", col("year"), col("month"))
