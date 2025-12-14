@@ -11,10 +11,7 @@ services:
     volumes:
       - ./resources:/opt/resources
       - ./scripts:/opt/scripts
-      - ./conf/shiro.ini:/opt/zeppelin/conf/shiro.ini
+      - ./notebooks:/zeppelin/notebook
     environment:
       - SPARK_HOME=/spark
       - PYSPARK_PYTHON=python3
-      - ZEPPELIN_NOTEBOOK_DIR=/opt/resources/notebooks
-      - ZEPPELIN_ANONYMOUS_ALLOWED=true
-      
