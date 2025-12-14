@@ -16,3 +16,5 @@ services:
       - SPARK_HOME=/spark
       - PYSPARK_PYTHON=python3
       - ZEPPELIN_NOTEBOOK_DIR=/opt/resources/notebooks
+      - ZEPPELIN_ANONYMOUS_ALLOWED=true
+      
