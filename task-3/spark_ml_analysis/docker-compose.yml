@@ -12,6 +12,3 @@ services:
       - ./resources:/opt/resources
       - ./scripts:/opt/scripts
       - ./notebooks:/zeppelin/notebook
-    environment:
-      - SPARK_HOME=/spark
-      - PYSPARK_PYTHON=python3
