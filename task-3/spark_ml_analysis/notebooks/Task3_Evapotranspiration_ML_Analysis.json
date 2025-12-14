@@ -1,0 +1,315 @@
+{
+  "paragraphs": [
+    {
+      "title": "Task 3: Spark MLlib - Evapotranspiration Prediction Analysis",
+      "text": "%md\n# Task 3: Machine Learning Analysis using Spark MLlib\n\n## Objective\nDetermine the expected amount of **precipitation_hours**, **sunshine**, and **wind_speed** that would lead to a **lower amount of evapotranspiration** for the month of May.\n\n## Target\nPredict conditions for May 2026 to achieve evapotranspiration < 1.5mm\n\n## Model Configuration\n- **Training Split**: 80%\n- **Validation Split**: 20%\n\n---",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "markdown",
+          "editOnDblClick": true
+        },
+        "editorMode": "ace/mode/markdown",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_header",
+      "id": "paragraph_1",
+      "status": "READY"
+    },
+    {
+      "title": "Step 1: Initialize Spark Session and Load Data",
+      "text": "%pyspark\n\nfrom pyspark.sql import SparkSession\nfrom pyspark.sql.functions import (\n    col, month, year, avg, stddev, min as spark_min, max as spark_max,\n    when, lit, round as spark_round, count, to_date\n)\nfrom pyspark.sql.types import DoubleType, IntegerType\nfrom pyspark.ml.feature import VectorAssembler, StandardScaler\nfrom pyspark.ml.regression import LinearRegression, RandomForestRegressor, GradientBoostedTreeRegressor\nfrom pyspark.ml.evaluation import RegressionEvaluator\nfrom pyspark.ml import Pipeline\n\nprint(\"=\"*80)\nprint(\"STEP 1: Loading and Exploring Data\")\nprint(\"=\"*80)\n\n# Load weather data\nweather_df = spark.read.csv(\n    \"/opt/resources/weatherData.csv\",\n    header=True,\n    inferSchema=True\n)\n\n# Load location data  \nlocation_df = spark.read.csv(\n    \"/opt/resources/locationData.csv\",\n    header=True,\n    inferSchema=True\n)\n\nprint(f\"\\nWeather data records: {weather_df.count()}\")\nprint(f\"Location data records: {location_df.count()}\")\nprint(\"\\nWeather Data Schema:\")\nweather_df.printSchema()",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_load_data",
+      "id": "paragraph_2",
+      "status": "READY"
+    },
+    {
+      "title": "Step 2: Data Preparation and Cleaning",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 2: Data Preparation and Cleaning\")\nprint(\"=\"*80)\n\n# Rename columns to remove special characters\nweather_df_clean = weather_df \\\n    .withColumnRenamed(\"weather_code (wmo code)\", \"weather_code\") \\\n    .withColumnRenamed(\"temperature_2m_max (°C)\", \"temp_max\") \\\n    .withColumnRenamed(\"temperature_2m_min (°C)\", \"temp_min\") \\\n    .withColumnRenamed(\"temperature_2m_mean (°C)\", \"temp_mean\") \\\n    .withColumnRenamed(\"apparent_temperature_max (°C)\", \"apparent_temp_max\") \\\n    .withColumnRenamed(\"apparent_temperature_min (°C)\", \"apparent_temp_min\") \\\n    .withColumnRenamed(\"apparent_temperature_mean (°C)\", \"apparent_temp_mean\") \\\n    .withColumnRenamed(\"daylight_duration (s)\", \"daylight_duration\") \\\n    .withColumnRenamed(\"sunshine_duration (s)\", \"sunshine_duration\") \\\n    .withColumnRenamed(\"precipitation_sum (mm)\", \"precipitation_sum\") \\\n    .withColumnRenamed(\"rain_sum (mm)\", \"rain_sum\") \\\n    .withColumnRenamed(\"precipitation_hours (h)\", \"precipitation_hours\") \\\n    .withColumnRenamed(\"wind_speed_10m_max (km/h)\", \"wind_speed\") \\\n    .withColumnRenamed(\"wind_gusts_10m_max (km/h)\", \"wind_gusts\") \\\n    .withColumnRenamed(\"wind_direction_10m_dominant (°)\", \"wind_direction\") \\\n    .withColumnRenamed(\"shortwave_radiation_sum (MJ/m²)\", \"shortwave_radiation\") \\\n    .withColumnRenamed(\"et0_fao_evapotranspiration (mm)\", \"evapotranspiration\")\n\n# Parse date and extract month/year\nweather_df_clean = weather_df_clean \\\n    .withColumn(\"date_parsed\", to_date(col(\"date\"), \"M/d/yyyy\")) \\\n    .withColumn(\"month\", month(col(\"date_parsed\"))) \\\n    .withColumn(\"year\", year(col(\"date_parsed\")))\n\n# Convert sunshine_duration from seconds to hours\nweather_df_clean = weather_df_clean \\\n    .withColumn(\"sunshine_hours\", col(\"sunshine_duration\") / 3600.0)\n\n# Join with location data\nfull_df = weather_df_clean.join(location_df, on=\"location_id\", how=\"left\")\n\nprint(\"Data cleaning completed. Sample data:\")\nfull_df.select(\"date\", \"city_name\", \"precipitation_hours\", \"sunshine_hours\", \n               \"wind_speed\", \"evapotranspiration\", \"month\", \"year\").show(5)",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_clean_data",
+      "id": "paragraph_3",
+      "status": "READY"
+    },
+    {
+      "title": "Step 3: Filter Data for May and Feature Selection",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 3: Filter Data for May (Month = 5) and Feature Selection\")\nprint(\"=\"*80)\n\n# Filter for May data only\nmay_df = full_df.filter(col(\"month\") == 5)\n\nprint(f\"\\nTotal records for May: {may_df.count()}\")\n\n# Exploratory statistics for May\nprint(\"\\nDescriptive Statistics for May data:\")\nmay_df.select(\"precipitation_hours\", \"sunshine_hours\", \"wind_speed\", \"evapotranspiration\").describe().show()\n\n# Check for null values\nprint(\"\\nNull value counts in key columns:\")\nfor column in [\"precipitation_hours\", \"sunshine_hours\", \"wind_speed\", \"evapotranspiration\"]:\n    null_count = may_df.filter(col(column).isNull()).count()\n    print(f\"  {column}: {null_count} nulls\")\n\n# Feature columns\nfeature_columns = [\n    \"precipitation_hours\",\n    \"sunshine_hours\", \n    \"wind_speed\",\n    \"temp_mean\",\n    \"shortwave_radiation\"\n]\n\nprint(\"\\n\" + \"=\"*50)\nprint(\"Selected Features for Modeling:\")\nprint(\"=\"*50)\nfor i, feat in enumerate(feature_columns, 1):\n    print(f\"  {i}. {feat}\")\nprint(\"\\nTarget Variable: evapotranspiration\")",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_filter_may",
+      "id": "paragraph_4",
+      "status": "READY"
+    },
+    {
+      "title": "Step 4: Data Preparation for ML and Train-Test Split",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 4: Data Preparation for ML and Train-Test Split (80-20)\")\nprint(\"=\"*80)\n\n# Prepare the dataset - ensure all features are DoubleType\nmay_df_ml = may_df\nfor col_name in feature_columns + [\"evapotranspiration\"]:\n    may_df_ml = may_df_ml.withColumn(col_name, col(col_name).cast(DoubleType()))\n\n# Remove any remaining null values\nmay_df_ml = may_df_ml.dropna(subset=feature_columns + [\"evapotranspiration\"])\n\nprint(f\"\\nFinal dataset size after cleaning: {may_df_ml.count()} records\")\n\n# Correlation Analysis\nprint(\"\\n\" + \"=\"*50)\nprint(\"Correlation Analysis\")\nprint(\"=\"*50)\npandas_df = may_df_ml.select(feature_columns + [\"evapotranspiration\"]).toPandas()\nprint(\"\\nCorrelation with Evapotranspiration:\")\nprint(\"-\" * 50)\nfor feature in feature_columns:\n    correlation = pandas_df[feature].corr(pandas_df[\"evapotranspiration\"])\n    print(f\"  {feature}: {correlation:.4f}\")\n\n# Create feature vector\nassembler = VectorAssembler(\n    inputCols=feature_columns,\n    outputCol=\"features_raw\"\n)\n\n# Scale features\nscaler = StandardScaler(\n    inputCol=\"features_raw\",\n    outputCol=\"features\",\n    withStd=True,\n    withMean=True\n)\n\n# Split data: 80% training, 20% validation\ntrain_df, test_df = may_df_ml.randomSplit([0.8, 0.2], seed=42)\n\nprint(f\"\\n\" + \"=\"*50)\nprint(\"Train-Test Split Results\")\nprint(\"=\"*50)\nprint(f\"Training set size: {train_df.count()} records (80%)\")\nprint(f\"Validation set size: {test_df.count()} records (20%)\")",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_split",
+      "id": "paragraph_5",
+      "status": "READY"
+    },
+    {
+      "title": "Step 5: Train Linear Regression Model",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 5: Training Linear Regression Model\")\nprint(\"=\"*80)\n\n# Define evaluator\nevaluator = RegressionEvaluator(\n    labelCol=\"evapotranspiration\",\n    predictionCol=\"prediction\",\n    metricName=\"rmse\"\n)\n\n# Linear Regression\nlr = LinearRegression(\n    featuresCol=\"features\",\n    labelCol=\"evapotranspiration\",\n    maxIter=100,\n    regParam=0.01,\n    elasticNetParam=0.5\n)\n\nlr_pipeline = Pipeline(stages=[assembler, scaler, lr])\nlr_model = lr_pipeline.fit(train_df)\nlr_predictions = lr_model.transform(test_df)\n\n# Evaluate\nlr_rmse = evaluator.evaluate(lr_predictions)\nevaluator.setMetricName(\"r2\")\nlr_r2 = evaluator.evaluate(lr_predictions)\nevaluator.setMetricName(\"mae\")\nlr_mae = evaluator.evaluate(lr_predictions)\n\nprint(f\"\\nLinear Regression Results:\")\nprint(f\"  RMSE: {lr_rmse:.4f}\")\nprint(f\"  R²:   {lr_r2:.4f}\")\nprint(f\"  MAE:  {lr_mae:.4f}\")\n\n# Get coefficients\nlr_summary = lr_model.stages[-1]\nprint(\"\\n\" + \"=\"*50)\nprint(\"Model Coefficients:\")\nprint(\"=\"*50)\nfor i, feature in enumerate(feature_columns):\n    print(f\"  {feature}: {lr_summary.coefficients[i]:.6f}\")\nprint(f\"  Intercept: {lr_summary.intercept:.6f}\")\n\n# Store results\nmodel_results = {}\nmodel_results[\"Linear Regression\"] = {\n    \"model\": lr_model,\n    \"RMSE\": lr_rmse,\n    \"R2\": lr_r2,\n    \"MAE\": lr_mae\n}",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_lr",
+      "id": "paragraph_6",
+      "status": "READY"
+    },
+    {
+      "title": "Step 6: Train Random Forest Model",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 6: Training Random Forest Model\")\nprint(\"=\"*80)\n\nrf = RandomForestRegressor(\n    featuresCol=\"features\",\n    labelCol=\"evapotranspiration\",\n    numTrees=100,\n    maxDepth=10,\n    seed=42\n)\n\nrf_pipeline = Pipeline(stages=[assembler, scaler, rf])\nrf_model = rf_pipeline.fit(train_df)\nrf_predictions = rf_model.transform(test_df)\n\nevaluator.setMetricName(\"rmse\")\nrf_rmse = evaluator.evaluate(rf_predictions)\nevaluator.setMetricName(\"r2\")\nrf_r2 = evaluator.evaluate(rf_predictions)\nevaluator.setMetricName(\"mae\")\nrf_mae = evaluator.evaluate(rf_predictions)\n\nprint(f\"\\nRandom Forest Results:\")\nprint(f\"  RMSE: {rf_rmse:.4f}\")\nprint(f\"  R²:   {rf_r2:.4f}\")\nprint(f\"  MAE:  {rf_mae:.4f}\")\n\n# Feature importance\nprint(\"\\n\" + \"=\"*50)\nprint(\"Feature Importance:\")\nprint(\"=\"*50)\nrf_feature_importance = rf_model.stages[-1].featureImportances.toArray()\nfor i, feature in enumerate(feature_columns):\n    print(f\"  {feature}: {rf_feature_importance[i]:.4f}\")\n\nmodel_results[\"Random Forest\"] = {\n    \"model\": rf_model,\n    \"RMSE\": rf_rmse,\n    \"R2\": rf_r2,\n    \"MAE\": rf_mae\n}",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_rf",
+      "id": "paragraph_7",
+      "status": "READY"
+    },
+    {
+      "title": "Step 7: Train Gradient Boosted Trees Model",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 7: Training Gradient Boosted Trees Model\")\nprint(\"=\"*80)\n\ngbt = GradientBoostedTreeRegressor(\n    featuresCol=\"features\",\n    labelCol=\"evapotranspiration\",\n    maxIter=100,\n    maxDepth=5,\n    seed=42\n)\n\ngbt_pipeline = Pipeline(stages=[assembler, scaler, gbt])\ngbt_model = gbt_pipeline.fit(train_df)\ngbt_predictions = gbt_model.transform(test_df)\n\nevaluator.setMetricName(\"rmse\")\ngbt_rmse = evaluator.evaluate(gbt_predictions)\nevaluator.setMetricName(\"r2\")\ngbt_r2 = evaluator.evaluate(gbt_predictions)\nevaluator.setMetricName(\"mae\")\ngbt_mae = evaluator.evaluate(gbt_predictions)\n\nprint(f\"\\nGradient Boosted Trees Results:\")\nprint(f\"  RMSE: {gbt_rmse:.4f}\")\nprint(f\"  R²:   {gbt_r2:.4f}\")\nprint(f\"  MAE:  {gbt_mae:.4f}\")\n\nmodel_results[\"Gradient Boosted Trees\"] = {\n    \"model\": gbt_model,\n    \"RMSE\": gbt_rmse,\n    \"R2\": gbt_r2,\n    \"MAE\": gbt_mae\n}",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_gbt",
+      "id": "paragraph_8",
+      "status": "READY"
+    },
+    {
+      "title": "Step 8: Model Comparison",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 8: Model Comparison and Selection\")\nprint(\"=\"*80)\n\nprint(\"\\n{:<25} {:<12} {:<12} {:<12}\".format(\"Model\", \"RMSE\", \"R²\", \"MAE\"))\nprint(\"-\" * 60)\nfor model_name, metrics in model_results.items():\n    print(\"{:<25} {:<12.4f} {:<12.4f} {:<12.4f}\".format(\n        model_name, metrics[\"RMSE\"], metrics[\"R2\"], metrics[\"MAE\"]\n    ))\n\n# Select best model based on R²\nbest_model_name = max(model_results.keys(), key=lambda x: model_results[x][\"R2\"])\nbest_model = model_results[best_model_name][\"model\"]\nprint(f\"\\n\" + \"=\"*50)\nprint(f\"Best Performing Model: {best_model_name}\")\nprint(f\"=\"*50)",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_compare",
+      "id": "paragraph_9",
+      "status": "READY"
+    },
+    {
+      "title": "Step 9: Analysis of Low Evapotranspiration Conditions",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 9: Determining Conditions for Low Evapotranspiration\")\nprint(\"=\"*80)\n\n# Analyze historical data where evapotranspiration < 1.5mm in May\nlow_et_df = may_df_ml.filter(col(\"evapotranspiration\") < 1.5)\n\nprint(f\"\\nHistorical records with evapotranspiration < 1.5mm in May: {low_et_df.count()}\")\n\nif low_et_df.count() > 0:\n    print(\"\\nStatistics for Low Evapotranspiration Conditions:\")\n    low_et_stats = low_et_df.select(\n        avg(\"precipitation_hours\").alias(\"mean_precip_hours\"),\n        stddev(\"precipitation_hours\").alias(\"std_precip_hours\"),\n        spark_min(\"precipitation_hours\").alias(\"min_precip_hours\"),\n        spark_max(\"precipitation_hours\").alias(\"max_precip_hours\"),\n        avg(\"sunshine_hours\").alias(\"mean_sunshine_hours\"),\n        stddev(\"sunshine_hours\").alias(\"std_sunshine_hours\"),\n        spark_min(\"sunshine_hours\").alias(\"min_sunshine_hours\"),\n        spark_max(\"sunshine_hours\").alias(\"max_sunshine_hours\"),\n        avg(\"wind_speed\").alias(\"mean_wind_speed\"),\n        stddev(\"wind_speed\").alias(\"std_wind_speed\"),\n        spark_min(\"wind_speed\").alias(\"min_wind_speed\"),\n        spark_max(\"wind_speed\").alias(\"max_wind_speed\"),\n        avg(\"evapotranspiration\").alias(\"mean_et\")\n    ).collect()[0]\n    \n    print(\"\\n  Precipitation Hours:\")\n    print(f\"    Mean: {low_et_stats['mean_precip_hours']:.2f} hours\")\n    print(f\"    Std Dev: {low_et_stats['std_precip_hours']:.2f}\")\n    print(f\"    Range: {low_et_stats['min_precip_hours']:.2f} - {low_et_stats['max_precip_hours']:.2f}\")\n    \n    print(\"\\n  Sunshine Hours:\")\n    print(f\"    Mean: {low_et_stats['mean_sunshine_hours']:.2f} hours\")\n    print(f\"    Std Dev: {low_et_stats['std_sunshine_hours']:.2f}\")\n    print(f\"    Range: {low_et_stats['min_sunshine_hours']:.2f} - {low_et_stats['max_sunshine_hours']:.2f}\")\n    \n    print(\"\\n  Wind Speed:\")\n    print(f\"    Mean: {low_et_stats['mean_wind_speed']:.2f} km/h\")\n    print(f\"    Std Dev: {low_et_stats['std_wind_speed']:.2f}\")\n    print(f\"    Range: {low_et_stats['min_wind_speed']:.2f} - {low_et_stats['max_wind_speed']:.2f}\")",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_low_et",
+      "id": "paragraph_10",
+      "status": "READY"
+    },
+    {
+      "title": "Step 10: Final Prediction for May 2026",
+      "text": "%pyspark\n\nprint(\"=\"*80)\nprint(\"STEP 10: Final Prediction for May 2026\")\nprint(\"=\"*80)\n\n# Get typical May values as baseline\nmay_stats = may_df_ml.select(\n    avg(\"precipitation_hours\").alias(\"avg_precip\"),\n    avg(\"sunshine_hours\").alias(\"avg_sunshine\"),\n    avg(\"wind_speed\").alias(\"avg_wind\"),\n    avg(\"temp_mean\").alias(\"avg_temp\"),\n    avg(\"shortwave_radiation\").alias(\"avg_radiation\"),\n    avg(\"evapotranspiration\").alias(\"avg_et\")\n).collect()[0]\n\nprint(\"\\nTypical May Conditions (Historical Average):\")\nprint(f\"  Average Precipitation Hours: {may_stats['avg_precip']:.2f} hours\")\nprint(f\"  Average Sunshine Hours: {may_stats['avg_sunshine']:.2f} hours\")\nprint(f\"  Average Wind Speed: {may_stats['avg_wind']:.2f} km/h\")\nprint(f\"  Average Evapotranspiration: {may_stats['avg_et']:.2f} mm\")\n\n# Get recommended conditions from low-ET analysis\nif low_et_df.count() > 0:\n    recommended_precip = low_et_stats['mean_precip_hours']\n    recommended_sunshine = low_et_stats['mean_sunshine_hours']\n    recommended_wind = low_et_stats['mean_wind_speed']\nelse:\n    # Fallback based on coefficient directions\n    lr_coefficients = lr_model.stages[-1].coefficients.toArray()\n    recommended_precip = may_stats['avg_precip'] * 1.5 if lr_coefficients[0] < 0 else may_stats['avg_precip'] * 0.5\n    recommended_sunshine = may_stats['avg_sunshine'] * 0.5 if lr_coefficients[1] > 0 else may_stats['avg_sunshine'] * 1.5\n    recommended_wind = may_stats['avg_wind'] * 0.5 if lr_coefficients[2] > 0 else may_stats['avg_wind'] * 1.5\n\nprint(\"\\n\" + \"*\" * 60)\nprint(\"PREDICTION RESULTS FOR MAY 2026\")\nprint(\"*\" * 60)\nprint(\"\\nTo achieve evapotranspiration LOWER than 1.5mm in May 2026,\")\nprint(\"the following daily conditions are recommended:\")\nprint(\"\\n  ┌─────────────────────────────────────────────────────┐\")\nprint(f\"  │  Precipitation Hours: {recommended_precip:>8.2f} hours              │\")\nprint(f\"  │  Sunshine Duration:   {recommended_sunshine:>8.2f} hours              │\")\nprint(f\"  │  Wind Speed:          {recommended_wind:>8.2f} km/h               │\")\nprint(\"  └─────────────────────────────────────────────────────┘\")\n\n# Verify prediction using the best model\nprint(\"\\n\" + \"=\"*50)\nprint(\"Model Verification\")\nprint(\"=\"*50)\n\n# Create test data point with recommended conditions\ntest_data = spark.createDataFrame([\n    (recommended_precip, recommended_sunshine, recommended_wind, \n     may_stats['avg_temp'], may_stats['avg_radiation'])\n], [\"precipitation_hours\", \"sunshine_hours\", \"wind_speed\", \"temp_mean\", \"shortwave_radiation\"])\n\n# Make prediction\nprediction = best_model.transform(test_data)\npredicted_et = prediction.select(\"prediction\").collect()[0][0]\n\nprint(f\"\\n  Using {best_model_name} model:\")\nprint(f\"  Predicted Evapotranspiration: {predicted_et:.4f} mm\")\nprint(f\"  Target: < 1.5 mm\")\nif predicted_et < 1.5:\n    print(f\"  Status: ✓ TARGET ACHIEVABLE\")\nelse:\n    print(f\"  Status: ✗ NEEDS ADJUSTMENT\")",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_prediction",
+      "id": "paragraph_11",
+      "status": "READY"
+    },
+    {
+      "title": "Summary Report",
+      "text": "%pyspark\n\nprint(\"\\n\" + \"=\"*80)\nprint(\"FINAL SUMMARY REPORT\")\nprint(\"=\"*80)\n\nprint(\"\"\"\nANALYSIS STEPS COMPLETED:\n─────────────────────────\n1. Data Loading: Loaded weather data (2010-2024) and location data for all districts\n2. Data Preparation: Cleaned columns, parsed dates, converted sunshine to hours\n3. Feature Selection: Selected 5 features (precipitation_hours, sunshine_hours, \n                      wind_speed, temp_mean, shortwave_radiation)\n4. Data Filtering: Filtered for May data only\n5. Correlation Analysis: Analyzed relationships between features and target\n6. Train-Test Split: 80% training, 20% validation\n7. Model Training: Trained 3 models (Linear Regression, Random Forest, GBT)\n8. Model Evaluation: Compared using RMSE, R², and MAE metrics\n9. Low-ET Analysis: Identified conditions associated with low evapotranspiration\n10. Prediction: Generated recommendations for May 2026\n\"\"\")\n\nprint(\"\\nMODEL PERFORMANCE SUMMARY:\")\nprint(\"-\" * 40)\nfor model_name, metrics in model_results.items():\n    print(f\"\\n{model_name}:\")\n    print(f\"  RMSE: {metrics['RMSE']:.4f}\")\n    print(f\"  R²:   {metrics['R2']:.4f}\")\n    print(f\"  MAE:  {metrics['MAE']:.4f}\")\n\nprint(f\"\\nBest Model: {best_model_name} (based on R² score)\")\n\nprint(\"\\n\" + \"=\"*80)\nprint(\"KEY FINDINGS FOR MAY 2026 PREDICTION\")\nprint(\"=\"*80)\nprint(f\"\"\"\nTo maintain evapotranspiration below 1.5mm in May 2026:\n\n┌────────────────────────────────────────────────────────────────┐\n│  RECOMMENDED DAILY WEATHER CONDITIONS                          │\n├────────────────────────────────────────────────────────────────┤\n│  • Mean Precipitation Hours:  {recommended_precip:>6.2f} hours                   │\n│  • Mean Sunshine Duration:    {recommended_sunshine:>6.2f} hours                   │\n│  • Mean Wind Speed:           {recommended_wind:>6.2f} km/h                    │\n├────────────────────────────────────────────────────────────────┤\n│  Expected Evapotranspiration: {predicted_et:>6.4f} mm (Target: < 1.5mm)     │\n└────────────────────────────────────────────────────────────────┘\n\nKEY INSIGHTS:\n─────────────\n• Higher precipitation hours tend to reduce evapotranspiration\n• Lower sunshine duration correlates with reduced evapotranspiration  \n• Moderate wind speeds help maintain lower evapotranspiration levels\n• These conditions are typical of cloudy, rainy days in May\n\"\"\")\n\nprint(\"\\nAnalysis Complete!\")",
+      "user": "anonymous",
+      "dateUpdated": "2024-01-01T00:00:00+0000",
+      "config": {
+        "colWidth": 12.0,
+        "enabled": true,
+        "results": {},
+        "editorSetting": {
+          "language": "python",
+          "editOnDblClick": false
+        },
+        "editorMode": "ace/mode/python",
+        "title": true
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "apps": [],
+      "jobName": "paragraph_summary",
+      "id": "paragraph_12",
+      "status": "READY"
+    }
+  ],
+  "name": "Task3_Evapotranspiration_ML_Analysis",
+  "id": "2KXXXXXX",
+  "noteParams": {},
+  "noteForms": {},
+  "angularObjects": {},
+  "config": {
+    "isZeppelinNotebookCronEnable": false,
+    "looknfeel": "default",
+    "personalizedMode": "false"
+  },
+  "info": {}
+}

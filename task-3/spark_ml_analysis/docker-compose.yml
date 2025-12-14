@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  zeppelin:
+    image: apache/zeppelin:0.9.0
+    container_name: zeppelin
+    platform: linux/amd64
+    restart: always
+    ports:
+      - 8089:8080
+    volumes:
+      - ./resources:/opt/resources
+      - ./scripts:/opt/scripts
+    environment:
+      - SPARK_HOME=/spark
+      - PYSPARK_PYTHON=python3
+      - ZEPPELIN_NOTEBOOK_DIR=/opt/resources/notebooks
