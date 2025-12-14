@@ -11,6 +11,7 @@ services:
     volumes:
       - ./resources:/opt/resources
       - ./scripts:/opt/scripts
+      - ./conf/shiro.ini:/opt/zeppelin/conf/shiro.ini
     environment:
       - SPARK_HOME=/spark
       - PYSPARK_PYTHON=python3
