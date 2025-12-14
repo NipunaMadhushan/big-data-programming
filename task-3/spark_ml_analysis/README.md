@@ -111,7 +111,7 @@ cp weatherData.csv spark_ml_analysis/resources/
 cp locationData.csv spark_ml_analysis/resources/
 ```
 
-3. **Copy the notebook to resources/notebooks:**
+3. **Copy the notebook JSON to resources/notebooks:**
 ```bash
 cp Task3_Evapotranspiration_ML_Analysis.json spark_ml_analysis/resources/notebooks/
 ```
@@ -129,11 +129,13 @@ docker-compose up -d
 
 6. **Access Zeppelin:**
    - Open browser and navigate to: `http://localhost:8089`
+   - No login required (anonymous access enabled by default)
 
 7. **Import the notebook:**
-   - Click on "Import note" in Zeppelin
-   - Select the JSON notebook file or upload it
-   - Run each paragraph sequentially
+   - Click on "Import note" in Zeppelin UI
+   - Browse and select: `/opt/resources/notebooks/Task3_Evapotranspiration_ML_Analysis.json`
+   - Or upload from your local machine
+   - Run each paragraph sequentially (Shift+Enter)
 
 ---
 
