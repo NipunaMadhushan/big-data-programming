@@ -1,0 +1,7 @@
+Feature,Coefficient,Impact
+precipitation_hours,-0.246957,Decreases ET
+sunshine_hours,-0.09156,Decreases ET
+wind_speed,0.204664,Increases ET
+temp_mean,0.255108,Increases ET
+shortwave_radiation,0.830731,Increases ET
+Intercept,4.225302,-

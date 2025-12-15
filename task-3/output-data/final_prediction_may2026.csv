@@ -1,0 +1,14 @@
+Parameter,Value,Unit
+Mean Precipitation Hours,23.23,hours
+Mean Sunshine Duration,0.58,hours
+Mean Wind Speed,19.37,km/h
+Fixed Temperature,23.69,°C
+Fixed Shortwave Radiation,5.42,MJ/m²
+Predicted Evapotranspiration,1.366,mm
+Target Evapotranspiration,< 1.5,mm
+Status,TARGET ACHIEVED,-
+Best Model Used,Random Forest,-
+Model R² Score,0.9576,-
+Valid Combinations Found,187,records
+Total Predictions Made,12555,records
+Success Rate,1.49%,-

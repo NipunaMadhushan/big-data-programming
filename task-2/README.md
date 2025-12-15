@@ -1,4 +1,4 @@
-# Task 2
+# Task 2 - Data Analysis
 
 ## Part 1 - Map Reduce
 Follow the steps below to setup HDFS and process data using map reduce.

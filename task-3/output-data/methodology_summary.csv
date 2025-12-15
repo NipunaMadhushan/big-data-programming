@@ -1,0 +1,8 @@
+Step,Description,Result
+Step 14,Analyze historical records where actual ET < 1.5mm,134 historical records found with ET < 1.5mm
+Step 15,Baseline prediction using historical means with May average temp/radiation,Baseline comparison - ET exceeds target with May averages
+Step 16.1,Get mean shortwave_radiation and temp_mean from historical ET < 1.5mm records as fixed values,"Fixed Radiation: 5.42 MJ/m², Fixed Temp: 23.69 °C"
+Step 16.2,Create prediction dataset with fixed radiation and temperature values,"12,555 predictions made with fixed values"
+Step 16.3,Predict ET using Random Forest model and filter where predicted ET < 1.5mm,187 valid combinations (1.49% success rate)
+Step 16.4,"Calculate statistics (mean, std, range) for valid combinations","Mean: Precip=23.23h, Sun=0.58h, Wind=19.37km/h"
+Step 17,Use mean values from valid combinations as final recommendation,Predicted ET: 1.3660 mm - TARGET ACHIEVED

@@ -1,0 +1,6 @@
+Feature,Correlation,Strength,Direction
+precipitation_hours,-0.743,Strong,Negative
+sunshine_hours,0.7394,Strong,Positive
+wind_speed,0.3994,Moderate,Positive
+temp_mean,0.5832,Strong,Positive
+shortwave_radiation,0.8842,Strong,Positive

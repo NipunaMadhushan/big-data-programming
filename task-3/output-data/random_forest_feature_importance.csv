@@ -1,0 +1,6 @@
+Feature,Importance
+shortwave_radiation,0.4322
+temp_mean,0.2349
+precipitation_hours,0.1739
+sunshine_hours,0.1148
+wind_speed,0.0442
