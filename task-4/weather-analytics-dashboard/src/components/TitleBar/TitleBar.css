@@ -1,0 +1,28 @@
+.title-bar {
+  background-color: white;
+  padding: 24px 32px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid #e5e7eb;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2B62C4;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+@media (max-width: 768px) {
+  .title-bar {
+    padding: 20px 24px;
+    min-height: 70px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+  }
+}
